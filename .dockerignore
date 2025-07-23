@@ -61,8 +61,6 @@ dist/
 logs/
 
 # Container/Docker
-Dockerfile
-.dockerignore
 docker-compose.yml
 docker-compose.yaml
 

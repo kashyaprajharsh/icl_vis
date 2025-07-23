@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
 
 env:
-  AZURE_CONTAINER_REGISTRY: documentsummary
+  AZURE_CONTAINER_REGISTRY: documentSummary
   CONTAINER_NAME: gpt2-viz-backend
   RESOURCE_GROUP: experiment
   CONTAINER_APP_NAME: gpt2-viz-backend

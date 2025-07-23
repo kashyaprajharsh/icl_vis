@@ -1,0 +1,68 @@
+name: Deploy to Azure Container Apps
+
+on:
+  push:
+    branches: [ main ]
+    paths: [ 'gpt2-viz-backend/**' ]
+  workflow_dispatch:
+
+env:
+  AZURE_CONTAINER_REGISTRY: documentsummary
+  CONTAINER_NAME: gpt2-viz-backend
+  RESOURCE_GROUP: experiment
+  CONTAINER_APP_NAME: gpt2-viz-backend
+  CONTAINER_APP_ENVIRONMENT: managedEnvironment-experiment
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Log in to Azure
+      uses: azure/login@v1
+      with:
+        creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+    - name: Log in to Azure Container Registry
+      run: |
+        az acr login --name ${{ env.AZURE_CONTAINER_REGISTRY }}
+
+    - name: Build and push Docker image
+      uses: docker/build-push-action@v5
+      with:
+        context: ./gpt2-viz-backend
+        push: true
+        tags: ${{ env.AZURE_CONTAINER_REGISTRY }}.azurecr.io/${{ env.CONTAINER_NAME }}:${{ github.sha }},${{ env.AZURE_CONTAINER_REGISTRY }}.azurecr.io/${{ env.CONTAINER_NAME }}:latest
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+
+    - name: Deploy to Azure Container Apps
+      uses: azure/container-apps-deploy-action@v2
+      with:
+        appSourcePath: ${{ github.workspace }}
+        acrName: ${{ env.AZURE_CONTAINER_REGISTRY }}
+        containerAppName: ${{ env.CONTAINER_APP_NAME }}
+        resourceGroup: ${{ env.RESOURCE_GROUP }}
+        imageToDeploy: ${{ env.AZURE_CONTAINER_REGISTRY }}.azurecr.io/${{ env.CONTAINER_NAME }}:${{ github.sha }}
+
+    - name: Get Container App URL
+      run: |
+        APP_URL=$(az containerapp show \
+          --name ${{ env.CONTAINER_APP_NAME }} \
+          --resource-group ${{ env.RESOURCE_GROUP }} \
+          --query properties.configuration.ingress.fqdn \
+          --output tsv)
+        echo "🚀 Application deployed at: https://$APP_URL"
+        echo "CONTAINER_APP_URL=https://$APP_URL" >> $GITHUB_ENV
+
+    - name: Health Check
+      run: |
+        echo "Waiting for application to be ready..."
+        sleep 30
+        curl -f ${{ env.CONTAINER_APP_URL }} || echo "Health check failed, but deployment completed"

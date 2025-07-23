@@ -1,0 +1,11 @@
+fastapi
+uvicorn
+pydantic
+transformers
+torch
+numpy
+networkx
+python-dotenv
+websockets
+jinja2
+requests

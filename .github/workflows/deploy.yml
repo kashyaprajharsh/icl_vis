@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
 
 env:
-  AZURE_CONTAINER_REGISTRY: documentSummary
+  AZURE_CONTAINER_REGISTRY: documentsummary
   CONTAINER_NAME: gpt2-viz-backend
   RESOURCE_GROUP: experiment
   CONTAINER_APP_NAME: gpt2-viz-backend
@@ -28,9 +28,22 @@ jobs:
       with:
         creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-    - name: Log in to Azure Container Registry
+    - name: Get ACR login credentials
+      id: acr-login
       run: |
-        az acr login --name ${{ env.AZURE_CONTAINER_REGISTRY }}
+        ACR_LOGIN_SERVER=$(az acr show --name ${{ env.AZURE_CONTAINER_REGISTRY }} --resource-group ${{ env.RESOURCE_GROUP }} --query loginServer --output tsv)
+        ACR_USERNAME=$(az acr credential show --name ${{ env.AZURE_CONTAINER_REGISTRY }} --resource-group ${{ env.RESOURCE_GROUP }} --query username --output tsv)
+        ACR_PASSWORD=$(az acr credential show --name ${{ env.AZURE_CONTAINER_REGISTRY }} --resource-group ${{ env.RESOURCE_GROUP }} --query passwords[0].value --output tsv)
+        echo "login-server=$ACR_LOGIN_SERVER" >> $GITHUB_OUTPUT
+        echo "username=$ACR_USERNAME" >> $GITHUB_OUTPUT
+        echo "password=$ACR_PASSWORD" >> $GITHUB_OUTPUT
+
+    - name: Login to Azure Container Registry
+      uses: docker/login-action@v3
+      with:
+        registry: ${{ steps.acr-login.outputs.login-server }}
+        username: ${{ steps.acr-login.outputs.username }}
+        password: ${{ steps.acr-login.outputs.password }}
 
     - name: Build and push Docker image
       uses: docker/build-push-action@v5

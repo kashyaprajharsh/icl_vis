@@ -3,7 +3,6 @@ name: Deploy to Azure Container Apps
 on:
   push:
     branches: [ main ]
-    paths: [ 'gpt2-viz-backend/**' ]
   workflow_dispatch:
 
 env:
